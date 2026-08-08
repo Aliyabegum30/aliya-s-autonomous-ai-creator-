@@ -1,0 +1,43 @@
+name: Postmortem agent cycle
+
+# This is the ONLY thing that drives autonomous generation. The evaluator
+# never calls this — it only calls GET /api/agent/feed, which is
+# strictly read-only. This workflow is what keeps the agent "running" even
+# when nobody is polling the feed.
+
+on:
+  schedule:
+    # Runs at :07 past every hour. GitHub Actions cron is best-effort, not
+    # exact — expect roughly-hourly, not exactly-hourly.
+    - cron: '7 * * * *'
+  workflow_dispatch: {} # allows manually triggering a cycle for testing
+
+jobs:
+  run-cycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call POST /internal/run-cycle
+        env:
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          RUN_CYCLE_SECRET: ${{ secrets.RUN_CYCLE_SECRET }}
+          AGENT_ID: ${{ secrets.AGENT_ID }}
+        run: |
+          set -e
+          if [ -z "$APP_BASE_URL" ] || [ -z "$RUN_CYCLE_SECRET" ] || [ -z "$AGENT_ID" ]; then
+            echo "Missing one of APP_BASE_URL, RUN_CYCLE_SECRET, AGENT_ID repository secrets." >&2
+            exit 1
+          fi
+
+          http_code=$(curl -s -o response.json -w "%{http_code}" \
+            -X POST "$APP_BASE_URL/internal/run-cycle" \
+            -H "Authorization: Bearer $RUN_CYCLE_SECRET" \
+            -H "Content-Type: application/json" \
+            -d "{\"agentId\": \"$AGENT_ID\"}")
+
+          echo "HTTP status: $http_code"
+          cat response.json
+
+          if [ "$http_code" -ge 400 ]; then
+            echo "run-cycle request failed." >&2
+            exit 1
+          fi

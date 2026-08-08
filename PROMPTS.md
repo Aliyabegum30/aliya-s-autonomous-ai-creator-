@@ -151,4 +151,158 @@ model), `src/storage/db.js` (shared connection pool), `scripts/migrate.js`
 and `scripts/check-db.js`, `README.md`, and this file.
 
 ### Human Decision
+Approved. Proceeded to Step 2.
+
+---
+
+## Session 6 — Step 2 implementation: POST /api/agent/init
+
+### Prompt
+Handoff instructions for a new session taking over the existing project
+(attached as a ZIP): inspect the current Step 1 files first, confirm they
+match the described state, then implement Step 2 only —
+`POST /api/agent/init` — with input validation, a generated `agentId`
+persisted to the `agents` table via the existing `src/storage/db.js`, and
+safe database-error handling. Explicitly out of scope for this step:
+`GET /api/agent/feed`, the autonomous loop, topic discovery, LLM
+integration, GitHub Actions, deployment, frontend, and any extra
+architecture.
+
+### Purpose
+Stand up the minimal evaluator-facing `init` endpoint on top of the
+existing Step 1 schema/connection layer, without getting ahead of the
+approved step-by-step order.
+
+### Result
+Inspected the attached ZIP and confirmed it matched the Step 1 description
+(package.json with only `pg`/`dotenv`, `.env.example`, `.gitignore`,
+`src/storage/schema.sql`, `src/storage/db.js`, `scripts/migrate.js`,
+`scripts/check-db.js`, `README.md`, `PROMPTS.md`) with no discrepancies.
+Added `express` as a dependency and an `npm start` script. Created
+`src/app.js` (Express app, JSON body parsing, `POST /api/agent/init` with
+validation of `persona.name`/`persona.domain`, an `INSERT` into `agents`
+using the existing `query()` helper, and try/catch error handling returning
+a 500 on database failure) and `src/server.js` (binds the app to a port).
+Did not modify the database schema or touch any Step 3+ concerns.
+
+### Human Decision
+Approved. Proceeded to implement the full remaining system in one session
+(see Session 7).
+
+---
+
+## Session 7 — Full remaining system: discovery, editorial judgment, memory,
+generation, scheduler endpoint, frontend, tests, docs
+
+### Prompt
+Handoff instructions confirming the verified Step 1+2 state (Neon
+connected, migration applied, a real agent persisted via
+`POST /api/agent/init`), then instructing implementation of the entire
+remaining system in one batch without stopping for approval between
+sub-steps: the full DISCOVER→NORMALIZE→FILTER→MEMORY CHECK→EDITORIAL
+JUDGMENT→SELECT→GENERATE→VALIDATE→STORE→COMPLETE pipeline; `GET
+/api/agent/feed` (strictly read-only); the protected
+`POST /internal/run-cycle` endpoint; a GitHub Actions hourly scheduler
+workflow; a read-only demo frontend; practical tests; and updated
+README/PROMPTS/.env.example — using the existing database, LLM (Gemini
+primary, Groq fallback), and discovery source (Hacker News + RSS fallback)
+choices already locked in earlier sessions, without redesigning the schema
+or introducing new infrastructure.
+
+### Purpose
+Complete the hackathon submission's core autonomy requirement: a system
+that discovers topics, exercises real editorial judgment (including
+rejecting things), remembers what it has covered, and keeps publishing on
+a schedule that runs independently of the evaluator's `GET /feed` polling.
+
+### Result
+Implemented, in `src/agent/`: `discovery.js` (Hacker News Firebase API
+primary, small curated RSS/Atom fallback via a dependency-free parser,
+concurrency-limited item fetching, timeout-protected HTTP throughout),
+`filter.js` (deterministic avoid-list keyword + freshness filter before
+any LLM call), `memory.js` (exact + Jaccard-similarity near-duplicate
+detection against `memory_signatures`, no vector database), `editorial.js`
+(batched Gemini structured-JSON scoring across six dimensions with a
+numeric-floor-plus-LLM-boolean acceptance rule), `generator.js`
+(Gemini-generated post text + rationale grounded strictly in the
+discovered source), `validator.js` (non-empty fields, valid ISO 8601 UTC
+timestamp, a groundedness check that the actually-discovered URL appears
+in sources, near-duplicate-text rejection against recent posts), and
+`controller.js` (orchestrates all ten steps, with a per-stage try/catch so
+every documented failure mode — source down, all rejected, LLM failure —
+ends the cycle with a recorded `cycle_runs` outcome instead of crashing,
+plus an overlap guard against a still-`in_progress` prior cycle).
+
+Added `src/utils/http.js` (AbortController-based timeout wrapper),
+`src/utils/similarity.js` (topic-key + Jaccard similarity — caught and
+fixed a real bug here during testing: the original tokenizer dropped all
+2-letter words, which silently stripped "AI" out of every topic
+signature), `src/utils/llm.js` (Gemini primary / Groq fallback, JSON
+parsing with markdown-fence stripping), and `src/persona/postmortem.js`
+(single source of truth for the persona's voice, beliefs, and avoid-list,
+consumed by filter/editorial/generator instead of each duplicating it).
+
+Added `src/storage/queries.js` centralizing all SQL against the five
+existing tables — did not modify `schema.sql`, per the constraint that the
+existing design was already sufficient.
+
+Added `src/routes/agent.js` (rewriting `POST /api/agent/init` to persist
+via the new queries module and fire a best-effort, non-blocking initial
+cycle after responding; `GET /api/agent/feed` validating `agentId` shape,
+404 for unknown agents, strictly read-only) and `src/routes/internal.js`
+(`POST /internal/run-cycle` behind a `Bearer RUN_CYCLE_SECRET` check,
+looking up the agent before running a cycle; `GET /internal/demo-data`, an
+unauthenticated but strictly read-only endpoint for the demo page to show
+persona/posts/rejected-topics/cycle-runs together — kept outside the
+evaluator contract per the earlier "no `/admin` API endpoint" constraint).
+Rewrote `src/app.js` to wire both route modules plus `express.static` for
+the demo frontend and a `/health` check.
+
+Built the demo frontend (`public/index.html`, `style.css`, `app.js`): a
+read-only page taking a pasted `agentId`, showing persona identity/mission,
+the live feed via the real `GET /api/agent/feed`, and editorial
+transparency (recent rejections and cycle outcomes) via
+`GET /internal/demo-data`. Added `.github/workflows/agent-cycle.yml`
+(hourly cron + `workflow_dispatch`, calling `POST /internal/run-cycle`
+with three required repository secrets: `APP_BASE_URL`,
+`RUN_CYCLE_SECRET`, `AGENT_ID`).
+
+Added `test/*.test.js` using Node's built-in `node:test` runner (no new
+dependencies): pure-logic tests for similarity, the deterministic filter,
+the RSS/Atom parser, editorial score validation, and post validation; full
+pipeline tests for `controller.runCycle` with every dependency
+(discovery/memory/editorial/generator/database) mocked, covering a
+successful publish, a source failure, an all-rejected editorial outcome, a
+duplicate-memory rejection alongside a surviving candidate, an LLM
+failure, and the in-progress overlap guard; and route-level tests against
+the real Express app with the database and cycle runner mocked, covering
+valid/invalid `init`, missing/malformed/unknown `agentId` on `feed`, feed
+ordering and response shape, and the auth/lookup/success paths on
+`run-cycle`. Ran the full suite (48 tests) to a clean pass.
+
+This development sandbox has no network access — `npm install`,
+`hacker-news.firebaseio.com`, Neon, and the Gemini/Groq APIs were all
+unreachable from here (confirmed directly: a `curl` to the Hacker News API
+returned an `x-deny-reason: host_not_allowed` proxy error, and `npm
+install` returned 403s against the npm registry). To still exercise
+`controller.test.js` and `routes.test.js` — which require `pg`, `dotenv`,
+and `express` to be resolvable — minimal hand-written stand-ins for those
+three packages were placed in `node_modules/` temporarily, used only to
+run the offline test suite in this sandbox, and deleted before packaging
+the final deliverable; they are not part of what was handed back, and
+`npm install` fetches the real packages. While building the Express
+stand-in, its first version didn't support middleware chains
+(`router.post(path, authMiddleware, handler)`), which surfaced as one
+failing test; fixed the stand-in (not application code) once traced. Did
+not fabricate a live end-to-end run — README.md explicitly lists what was
+and wasn't verified against real infrastructure, with a manual verification
+procedure for the person to run against their real Neon/Gemini credentials.
+
+Updated `README.md` (architecture, full API reference, environment
+variables, local setup, deployment steps, GitHub Actions secrets, testing
+section with an explicit "what has and hasn't been verified" disclosure,
+project structure, known limitations) and `.env.example` (comments
+reflecting the completed system rather than the Step 1 placeholder note).
+
+### Human Decision
 Pending review.

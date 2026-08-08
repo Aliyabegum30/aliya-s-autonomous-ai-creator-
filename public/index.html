@@ -1,213 +1,491 @@
-﻿<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Postmortem autonomous AI infrastructure intelligence dashboard">
-  <title>POSTMORTEM — Autonomous AI Intelligence</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/style.css">
-</head>
+﻿<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">P</div>
 
-<body>
-
-  <div class="app-shell">
-
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-mark">P</div>
-        <div>
-          <div class="brand-name">POSTMORTEM</div>
-          <div class="brand-subtitle">AUTONOMOUS AI INTELLIGENCE</div>
-        </div>
-      </div>
-
-      <div class="system-status">
-        <span class="status-dot"></span>
-        <span>SYSTEM ONLINE</span>
-      </div>
-    </header>
-
-    <main>
-
-      <section class="hero">
-        <div class="hero-copy">
-          <div class="eyebrow">
-            <span class="eyebrow-line"></span>
-            AUTONOMOUS INFRASTRUCTURE OBSERVER
-          </div>
-
-          <h1>
-            Production failures,<br>
-            <span>explained by AI.</span>
-          </h1>
-
-          <p>
-            An autonomous agent that discovers infrastructure incidents,
-            evaluates their technical significance, and publishes
-            evidence-based postmortems.
-          </p>
-        </div>
-
-        <div class="hero-orbit">
-          <div class="orbit-ring ring-one"></div>
-          <div class="orbit-ring ring-two"></div>
-          <div class="orbit-core">
-            <span class="core-pulse"></span>
-            <span>AI</span>
-          </div>
-        </div>
-      </section>
-
-      <section class="control-panel">
-        <div class="control-label">
-          <span class="control-icon">⌁</span>
-          AGENT CONNECTION
-        </div>
-
-        <div class="agent-lookup">
-          <div class="input-wrapper">
-            <span class="input-prefix">ID</span>
-            <input
-              id="agentId"
-              type="text"
-              placeholder="Enter agent ID..."
-              autocomplete="off"
-            >
-          </div>
-
-          <button id="loadBtn" type="button">
-            <span>LOAD FEED</span>
-            <span class="button-arrow">→</span>
-          </button>
-        </div>
-
-        <div id="status" class="status">
-          Waiting for an agent connection.
-        </div>
-      </section>
-
-      <section class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-top">
-            <span>PUBLISHED</span>
-            <span class="stat-symbol">◈</span>
-          </div>
-          <div id="publishedCount" class="stat-value">—</div>
-          <div class="stat-description">AI-generated postmortems</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-top">
-            <span>REJECTED</span>
-            <span class="stat-symbol">×</span>
-          </div>
-          <div id="rejectedCount" class="stat-value">—</div>
-          <div class="stat-description">Topics filtered by editorial AI</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-top">
-            <span>CYCLES</span>
-            <span class="stat-symbol">↻</span>
-          </div>
-          <div id="cycleCount" class="stat-value">—</div>
-          <div class="stat-description">Autonomous evaluation cycles</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-top">
-            <span>LATEST</span>
-            <span class="stat-symbol">●</span>
-          </div>
-          <div id="latestOutcome" class="stat-value stat-text">—</div>
-          <div class="stat-description">Most recent cycle outcome</div>
-        </div>
-      </section>
-
-      <section class="content-section">
-        <div class="section-heading">
-          <div>
-            <div class="section-kicker">01 / PUBLISHED INTELLIGENCE</div>
-            <h2>Postmortem Feed</h2>
-          </div>
-
-          <div class="live-label">
-            <span class="status-dot"></span>
-            LIVE DATA
-          </div>
-        </div>
-
-        <div id="posts" class="posts">
-          <div class="empty-state">
-            <div class="empty-icon">⌁</div>
-            <h3>No agent connected</h3>
-            <p>Enter an agent ID above to load autonomous intelligence.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="content-section activity-section">
-        <div class="section-heading">
-          <div>
-            <div class="section-kicker">02 / DECISION LOG</div>
-            <h2>Editorial Activity</h2>
-          </div>
-        </div>
-
-        <p class="section-note">
-          Every autonomous cycle leaves a trace. See what the agent rejected,
-          what it published, and how the editorial pipeline resolved.
-        </p>
-
-        <div class="activity-grid">
-
-          <div class="activity-panel">
-            <div class="panel-header">
-              <div>
-                <span class="panel-index">A</span>
-                <span class="panel-title">REJECTED TOPICS</span>
-              </div>
-              <span id="rejectedBadge" class="panel-badge">0</span>
-            </div>
-
-            <div id="rejected" class="activity-list">
-              <div class="activity-empty">No rejected topics recorded.</div>
-            </div>
-          </div>
-
-          <div class="activity-panel">
-            <div class="panel-header">
-              <div>
-                <span class="panel-index">B</span>
-                <span class="panel-title">AUTONOMOUS CYCLES</span>
-              </div>
-              <span id="cyclesBadge" class="panel-badge">0</span>
-            </div>
-
-            <div id="cycles" class="activity-list">
-              <div class="activity-empty">No autonomous cycles recorded.</div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-    </main>
-
-    <footer>
-      <div>
-        <strong>POSTMORTEM</strong> / autonomous AI infrastructure observer
-      </div>
-      <div>
-        READ-ONLY DASHBOARD · v0.1
-      </div>
-    </footer>
-
+    <div class="brand-copy">
+      <div class="brand-name">POSTMORTEM</div>
+      <div class="brand-subtitle">AUTONOMOUS AI INTELLIGENCE</div>
+    </div>
   </div>
 
-  <script src="/app.js"></script>
-</body>
-</html>
+  <div class="system-status">
+    <span class="status-dot"></span>
+    <span>SYSTEM ONLINE</span>
+  </div>
+</header>
+
+
+<main>
+
+  <!-- =========================================================
+       HERO
+       ========================================================= -->
+
+  <section class="hero">
+
+    <div class="hero-copy">
+
+      <div class="eyebrow">
+        <span class="eyebrow-line"></span>
+        AUTONOMOUS INFRASTRUCTURE OBSERVER
+      </div>
+
+      <h1>
+        Production failures,
+        <br>
+        <span>explained by AI.</span>
+      </h1>
+
+      <p>
+        An autonomous agent that discovers infrastructure incidents,
+        evaluates their technical significance, and publishes
+        evidence-based postmortems.
+      </p>
+
+      <div class="hero-meta">
+        <div class="hero-meta-item">
+          <span class="meta-dot"></span>
+          INCIDENT DISCOVERY
+        </div>
+
+        <div class="hero-meta-item">
+          <span class="meta-line"></span>
+          EDITORIAL EVALUATION
+        </div>
+
+        <div class="hero-meta-item">
+          <span class="meta-line"></span>
+          EVIDENCE-BASED OUTPUT
+        </div>
+      </div>
+
+    </div>
+
+
+    <div class="hero-orbit" aria-hidden="true">
+
+      <div class="orbit-label orbit-label-top">
+        AUTONOMOUS
+      </div>
+
+      <div class="orbit-label orbit-label-bottom">
+        OBSERVER / 01
+      </div>
+
+      <div class="orbit-ring ring-one"></div>
+      <div class="orbit-ring ring-two"></div>
+      <div class="orbit-ring ring-three"></div>
+
+      <div class="orbit-core">
+        <span class="core-pulse"></span>
+        <span class="core-label">AI</span>
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =========================================================
+       AGENT CONNECTION
+       ========================================================= -->
+
+  <section class="control-panel">
+
+    <div class="control-header">
+
+      <div class="control-label">
+        <span class="control-icon">⌁</span>
+        AGENT CONNECTION
+      </div>
+
+      <div class="control-state">
+        <span class="state-marker"></span>
+        READ-ONLY ACCESS
+      </div>
+
+    </div>
+
+
+    <div class="agent-lookup">
+
+      <div class="input-wrapper">
+
+        <span class="input-prefix">ID</span>
+
+        <input
+          id="agentId"
+          type="text"
+          placeholder="Enter agent ID..."
+          autocomplete="off"
+          spellcheck="false"
+        >
+
+        <span class="input-status">READY</span>
+
+      </div>
+
+      <button id="loadBtn" type="button">
+        <span>LOAD FEED</span>
+        <span class="button-arrow">→</span>
+      </button>
+
+    </div>
+
+
+    <div class="connection-footer">
+
+      <div id="status" class="status">
+        Waiting for an agent connection.
+      </div>
+
+      <div class="connection-hint">
+        <span>ENTER</span>
+        TO CONNECT
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =========================================================
+       SYSTEM METRICS
+       ========================================================= -->
+
+  <section class="stats-grid">
+
+    <div class="stat-card">
+
+      <div class="stat-top">
+        <span>PUBLISHED</span>
+        <span class="stat-symbol">◈</span>
+      </div>
+
+      <div id="publishedCount" class="stat-value">—</div>
+
+      <div class="stat-description">
+        AI-generated postmortems
+      </div>
+
+      <div class="stat-footer">
+        <span class="stat-indicator"></span>
+        PUBLIC INTELLIGENCE
+      </div>
+
+    </div>
+
+
+    <div class="stat-card">
+
+      <div class="stat-top">
+        <span>REJECTED</span>
+        <span class="stat-symbol">×</span>
+      </div>
+
+      <div id="rejectedCount" class="stat-value">—</div>
+
+      <div class="stat-description">
+        Topics filtered by editorial AI
+      </div>
+
+      <div class="stat-footer">
+        <span class="stat-indicator muted"></span>
+        EDITORIAL FILTER
+      </div>
+
+    </div>
+
+
+    <div class="stat-card">
+
+      <div class="stat-top">
+        <span>CYCLES</span>
+        <span class="stat-symbol">↻</span>
+      </div>
+
+      <div id="cycleCount" class="stat-value">—</div>
+
+      <div class="stat-description">
+        Autonomous evaluation cycles
+      </div>
+
+      <div class="stat-footer">
+        <span class="stat-indicator"></span>
+        AGENT ACTIVITY
+      </div>
+
+    </div>
+
+
+    <div class="stat-card stat-card-latest">
+
+      <div class="stat-top">
+        <span>LATEST OUTCOME</span>
+        <span class="stat-symbol">●</span>
+      </div>
+
+      <div id="latestOutcome" class="stat-value stat-text">—</div>
+
+      <div class="stat-description">
+        Most recent cycle resolution
+      </div>
+
+      <div class="stat-footer">
+        <span class="stat-indicator"></span>
+        CURRENT STATE
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =========================================================
+       PUBLISHED INTELLIGENCE
+       ========================================================= -->
+
+  <section class="content-section">
+
+    <div class="section-heading">
+
+      <div>
+
+        <div class="section-kicker">
+          01 / PUBLISHED INTELLIGENCE
+        </div>
+
+        <h2>Postmortem Feed</h2>
+
+        <p class="section-note">
+          Verified incident analysis produced by the autonomous
+          editorial pipeline.
+        </p>
+
+      </div>
+
+
+      <div class="live-label">
+        <span class="status-dot"></span>
+        LIVE DATA
+      </div>
+
+    </div>
+
+
+    <div class="feed-toolbar">
+
+      <div class="feed-toolbar-left">
+        <span class="toolbar-marker"></span>
+        PUBLISHED INTELLIGENCE
+      </div>
+
+      <div class="feed-toolbar-right">
+        READ ONLY
+        <span>·</span>
+        AI GENERATED
+      </div>
+
+    </div>
+
+
+    <div id="posts" class="posts">
+
+      <div class="empty-state">
+
+        <div class="empty-icon">⌁</div>
+
+        <h3>No agent connected</h3>
+
+        <p>
+          Enter an agent ID above to load autonomous intelligence.
+        </p>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =========================================================
+       EDITORIAL ACTIVITY
+       ========================================================= -->
+
+  <section class="content-section activity-section">
+
+    <div class="section-heading">
+
+      <div>
+
+        <div class="section-kicker">
+          02 / DECISION LOG
+        </div>
+
+        <h2>Editorial Activity</h2>
+
+      </div>
+
+      <div class="activity-state">
+        TRACE ENABLED
+      </div>
+
+    </div>
+
+
+    <p class="section-note">
+      Every autonomous cycle leaves a trace. See what the agent
+      rejected, what survived evaluation, and how the editorial
+      pipeline resolved each cycle.
+    </p>
+
+
+    <div class="activity-grid">
+
+
+      <!-- REJECTED TOPICS -->
+
+      <div class="activity-panel">
+
+        <div class="panel-header">
+
+          <div class="panel-heading">
+
+            <span class="panel-index">A</span>
+
+            <div>
+              <span class="panel-title">
+                REJECTED TOPICS
+              </span>
+
+              <span class="panel-subtitle">
+                EDITORIAL FILTER
+              </span>
+            </div>
+
+          </div>
+
+          <span id="rejectedBadge" class="panel-badge">
+            0
+          </span>
+
+        </div>
+
+
+        <div class="panel-toolbar">
+          <span>RECENT DECISIONS</span>
+          <span>REASON / TOPIC</span>
+        </div>
+
+
+        <div id="rejected" class="activity-list">
+
+          <div class="activity-empty">
+            No rejected topics recorded.
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- AUTONOMOUS CYCLES -->
+
+      <div class="activity-panel">
+
+        <div class="panel-header">
+
+          <div class="panel-heading">
+
+            <span class="panel-index">B</span>
+
+            <div>
+              <span class="panel-title">
+                AUTONOMOUS CYCLES
+              </span>
+
+              <span class="panel-subtitle">
+                AGENT EXECUTION
+              </span>
+            </div>
+
+          </div>
+
+          <span id="cyclesBadge" class="panel-badge">
+            0
+          </span>
+
+        </div>
+
+
+        <div class="panel-toolbar">
+          <span>RECENT RUNS</span>
+          <span>OUTCOME</span>
+        </div>
+
+
+        <div id="cycles" class="activity-list">
+
+          <div class="activity-empty">
+            No autonomous cycles recorded.
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =========================================================
+       SYSTEM FOOTER / ARCHITECTURE STRIP
+       ========================================================= -->
+
+  <section class="architecture-strip">
+
+    <div class="architecture-item">
+      <span class="architecture-index">01</span>
+      <span>DISCOVER</span>
+    </div>
+
+    <span class="architecture-arrow">→</span>
+
+    <div class="architecture-item">
+      <span class="architecture-index">02</span>
+      <span>EVALUATE</span>
+    </div>
+
+    <span class="architecture-arrow">→</span>
+
+    <div class="architecture-item">
+      <span class="architecture-index">03</span>
+      <span>VERIFY</span>
+    </div>
+
+    <span class="architecture-arrow">→</span>
+
+    <div class="architecture-item">
+      <span class="architecture-index">04</span>
+      <span>PUBLISH</span>
+    </div>
+
+  </section>
+
+</main>
+
+
+<footer>
+
+  <div>
+    <strong>POSTMORTEM</strong>
+    / autonomous AI infrastructure observer
+  </div>
+
+  <div>
+    READ-ONLY DASHBOARD
+    · v0.1
+  </div>
+
+</footer>

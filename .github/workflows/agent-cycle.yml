@@ -1,43 +1,101 @@
 name: Postmortem agent cycle
 
-# This is the ONLY thing that drives autonomous generation. The evaluator
-# never calls this — it only calls GET /api/agent/feed, which is
-# strictly read-only. This workflow is what keeps the agent "running" even
-# when nobody is polling the feed.
+# This workflow is the autonomous scheduler.
+#
+# The evaluator does NOT call this workflow.
+# The evaluator only calls:
+#
+#   GET /api/agent/feed?agentId=...
+#
+# GitHub Actions periodically calls:
+#
+#   POST /internal/run-cycle
+#
+# which triggers one complete autonomous generation cycle.
 
 on:
   schedule:
-    # Runs at :07 past every hour. GitHub Actions cron is best-effort, not
-    # exact — expect roughly-hourly, not exactly-hourly.
+    # Approximately once every hour.
+    # GitHub Actions cron is best-effort, so this is not exact.
     - cron: '7 * * * *'
-  workflow_dispatch: {} # allows manually triggering a cycle for testing
+
+  # Allows us to manually trigger a cycle from GitHub Actions
+  # while testing the deployed application.
+  workflow_dispatch:
 
 jobs:
   run-cycle:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Call POST /internal/run-cycle
+      - name: Call autonomous agent cycle
         env:
           APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
           RUN_CYCLE_SECRET: ${{ secrets.RUN_CYCLE_SECRET }}
           AGENT_ID: ${{ secrets.AGENT_ID }}
+
         run: |
-          set -e
-          if [ -z "$APP_BASE_URL" ] || [ -z "$RUN_CYCLE_SECRET" ] || [ -z "$AGENT_ID" ]; then
-            echo "Missing one of APP_BASE_URL, RUN_CYCLE_SECRET, AGENT_ID repository secrets." >&2
+          set -euo pipefail
+
+          echo "Starting autonomous Postmortem cycle..."
+
+          # ---------------------------------------------------------------
+          # Validate required secrets
+          # ---------------------------------------------------------------
+
+          if [ -z "${APP_BASE_URL:-}" ]; then
+            echo "ERROR: APP_BASE_URL secret is missing." >&2
             exit 1
           fi
 
-          http_code=$(curl -s -o response.json -w "%{http_code}" \
-            -X POST "$APP_BASE_URL/internal/run-cycle" \
-            -H "Authorization: Bearer $RUN_CYCLE_SECRET" \
-            -H "Content-Type: application/json" \
-            -d "{\"agentId\": \"$AGENT_ID\"}")
+          if [ -z "${RUN_CYCLE_SECRET:-}" ]; then
+            echo "ERROR: RUN_CYCLE_SECRET secret is missing." >&2
+            exit 1
+          fi
+
+          if [ -z "${AGENT_ID:-}" ]; then
+            echo "ERROR: AGENT_ID secret is missing." >&2
+            exit 1
+          fi
+
+          # Remove a trailing slash so we don't accidentally create
+          # /internal/run-cycle with a double slash.
+          APP_BASE_URL="${APP_BASE_URL%/}"
+
+          echo "Calling deployed autonomous agent..."
+
+          # ---------------------------------------------------------------
+          # Trigger one autonomous cycle
+          # ---------------------------------------------------------------
+
+          http_code=$(
+            curl \
+              --silent \
+              --show-error \
+              --output response.json \
+              --write-out "%{http_code}" \
+              --request POST \
+              "$APP_BASE_URL/internal/run-cycle" \
+              --header "Authorization: Bearer $RUN_CYCLE_SECRET" \
+              --header "Content-Type: application/json" \
+              --data "{\"agentId\":\"$AGENT_ID\"}" \
+              --max-time 120
+          )
 
           echo "HTTP status: $http_code"
+
+          echo "Agent response:"
           cat response.json
 
+          echo ""
+
+          # ---------------------------------------------------------------
+          # Fail the GitHub Action for HTTP errors
+          # ---------------------------------------------------------------
+
           if [ "$http_code" -ge 400 ]; then
-            echo "run-cycle request failed." >&2
+            echo "ERROR: autonomous run-cycle request failed." >&2
             exit 1
           fi
+
+          echo "Autonomous cycle completed successfully."

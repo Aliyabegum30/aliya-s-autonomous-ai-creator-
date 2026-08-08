@@ -1,620 +1,245 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
-
-  <title>Postmortem — Autonomous AI Intelligence</title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-  <link
-    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
-    rel="stylesheet"
-  >
-
-  <link rel="stylesheet" href="./style.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Postmortem — Autonomous AI Intelligence</title>
+<meta name="description" content="Postmortem: an autonomous AI agent that discovers infrastructure incidents, evaluates their technical significance, and publishes evidence-based postmortems." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
 
-  <div class="app-shell">
-
-    <!-- =====================================================
-         TOP BAR
-    ====================================================== -->
-
-    <header class="topbar">
-
+  <!-- ============ TOP BAR ============ -->
+  <header class="topbar">
+    <div class="topbar-inner">
       <div class="brand">
-
-        <div class="brand-mark">
-          P
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 6v6c0 5 3.8 8.7 9 10 5.2-1.3 9-5 9-10V6l-9-4Z"/></svg>
         </div>
-
-        <div class="brand-copy">
-
-          <div class="brand-name">
-            POSTMORTEM
+        <div class="brand-text">
+          <div class="brand-title">
+            <span class="brand-tag">[P]</span>
+            <h1>POSTMORTEM</h1>
           </div>
-
-          <div class="brand-subtitle">
-            AUTONOMOUS AI INTELLIGENCE
-          </div>
-
+          <p class="brand-subtitle">Autonomous AI Intelligence</p>
         </div>
-
       </div>
 
       <div class="system-status">
-
-        <span class="status-dot"></span>
-
-        <span>
-          SYSTEM ONLINE
-        </span>
-
+        <span class="status-pulse" aria-hidden="true"></span>
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.9 19.1a10 10 0 0 1 0-14.2M19.1 4.9a10 10 0 0 1 0 14.2M8 16a5 5 0 0 1 0-8M16 8a5 5 0 0 1 0 8"/><circle cx="12" cy="12" r="1"/></svg>
+        <span>SYSTEM ONLINE</span>
       </div>
+    </div>
+  </header>
 
-    </header>
+  <main class="container">
 
-
-    <!-- =====================================================
-         HERO
-    ====================================================== -->
-
-    <main>
-
-      <section class="hero">
-
+    <!-- ============ HERO ============ -->
+    <section class="hero reveal">
+      <div class="hero-grid-bg" aria-hidden="true"></div>
+      <div class="hero-inner">
         <div class="hero-copy">
-
           <div class="eyebrow">
-
-            <span class="eyebrow-line"></span>
-
-            AUTONOMOUS INFRASTRUCTURE OBSERVER
-
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <span>Autonomous Infrastructure Observer</span>
           </div>
-
-          <h1>
-            Production failures,
-            <br>
-            <span>explained by AI.</span>
-          </h1>
-
-          <p class="hero-description">
-            An autonomous agent that discovers infrastructure
-            incidents, evaluates their technical significance,
-            and publishes evidence-based postmortems.
+          <h2 class="hero-title">Production failures,<br /><span class="accent-text">explained by AI.</span></h2>
+          <p class="hero-desc">
+            An autonomous agent that discovers infrastructure incidents, evaluates their
+            technical significance, and publishes evidence-based postmortems — no human
+            writes or approves the copy below.
           </p>
-
-          <div class="hero-meta">
-
-            <span>DISCOVERY</span>
-            <span class="hero-meta-dot">/</span>
-            <span>ANALYSIS</span>
-            <span class="hero-meta-dot">/</span>
-            <span>EDITORIAL</span>
-
+          <div class="pipeline-tags">
+            <span class="pipeline-tag c-cyan">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              DISCOVERY
+            </span>
+            <span class="sep">/</span>
+            <span class="pipeline-tag c-blue">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              ANALYSIS
+            </span>
+            <span class="sep">/</span>
+            <span class="pipeline-tag c-green">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 3 6v6c0 5 3.8 8.7 9 10 5.2-1.3 9-5 9-10V6l-9-4Z"/><path d="m9 12 2 2 4-4"/></svg>
+              EDITORIAL
+            </span>
           </div>
-
         </div>
 
-
-        <!-- AI VISUAL -->
-
-        <div class="hero-orbit" aria-hidden="true">
-
-          <div class="orbit-outer"></div>
-
-          <div class="orbit-middle"></div>
-
-          <div class="orbit-inner"></div>
-
-          <div class="orbit-scan"></div>
-
-          <div class="orbit-core">
-
-            <span class="core-pulse"></span>
-
-            <span class="core-label">
-              AI
-            </span>
-
-          </div>
-
-        </div>
-
-      </section>
-
-
-      <!-- =====================================================
-           AGENT CONNECTION
-      ====================================================== -->
-
-      <section class="control-panel">
-
-        <div class="control-header">
-
-          <div class="control-label">
-
-            <span class="control-icon">
-              ⌁
-            </span>
-
-            AGENT CONNECTION
-
-          </div>
-
-          <div class="control-state">
-
-            <span class="state-line"></span>
-
-            READY FOR INPUT
-
-          </div>
-
-        </div>
-
-
-        <div class="agent-lookup">
-
-          <div class="input-wrapper">
-
-            <span class="input-prefix">
-              ID
-            </span>
-
-            <input
-              id="agentId"
-              type="text"
-              placeholder="Enter autonomous agent ID..."
-              autocomplete="off"
-            >
-
-            <span class="input-status">
-              ●
-            </span>
-
-          </div>
-
-
-          <button
-            id="loadBtn"
-            type="button"
-          >
-
-            <span>
-              LOAD FEED
-            </span>
-
-            <span class="button-arrow">
-              →
-            </span>
-
-          </button>
-
-        </div>
-
-
-        <div class="connection-footer">
-
-          <div
-            id="status"
-            class="status"
-          >
-            Waiting for an agent connection.
-          </div>
-
-          <div class="connection-protocol">
-            READ-ONLY · SECURE FEED
-          </div>
-
-        </div>
-
-      </section>
-
-
-      <!-- =====================================================
-           TELEMETRY
-      ====================================================== -->
-
-      <section class="stats-grid">
-
-        <!-- PUBLISHED -->
-
-        <div class="stat-card">
-
-          <div class="stat-top">
-
-            <span>
-              PUBLISHED
-            </span>
-
-            <span class="stat-symbol">
-              ◈
-            </span>
-
-          </div>
-
-          <div
-            id="publishedCount"
-            class="stat-value"
-          >
-            —
-          </div>
-
-          <div class="stat-description">
-            AI-generated postmortems
-          </div>
-
-          <div class="stat-line">
-            <span></span>
-          </div>
-
-        </div>
-
-
-        <!-- REJECTED -->
-
-        <div class="stat-card">
-
-          <div class="stat-top">
-
-            <span>
-              REJECTED
-            </span>
-
-            <span class="stat-symbol">
-              ×
-            </span>
-
-          </div>
-
-          <div
-            id="rejectedCount"
-            class="stat-value"
-          >
-            —
-          </div>
-
-          <div class="stat-description">
-            Topics filtered by editorial AI
-          </div>
-
-          <div class="stat-line">
-            <span></span>
-          </div>
-
-        </div>
-
-
-        <!-- CYCLES -->
-
-        <div class="stat-card">
-
-          <div class="stat-top">
-
-            <span>
-              CYCLES
-            </span>
-
-            <span class="stat-symbol">
-              ↻
-            </span>
-
-          </div>
-
-          <div
-            id="cycleCount"
-            class="stat-value"
-          >
-            —
-          </div>
-
-          <div class="stat-description">
-            Autonomous evaluation cycles
-          </div>
-
-          <div class="stat-line">
-            <span></span>
-          </div>
-
-        </div>
-
-
-        <!-- LATEST -->
-
-        <div class="stat-card">
-
-          <div class="stat-top">
-
-            <span>
-              LATEST
-            </span>
-
-            <span class="stat-symbol">
-              ●
-            </span>
-
-          </div>
-
-          <div
-            id="latestOutcome"
-            class="stat-value stat-text"
-          >
-            —
-          </div>
-
-          <div class="stat-description">
-            Most recent cycle outcome
-          </div>
-
-          <div class="stat-line">
-            <span></span>
-          </div>
-
-        </div>
-
-      </section>
-
-
-      <!-- =====================================================
-           PUBLISHED INTELLIGENCE
-      ====================================================== -->
-
-      <section class="content-section">
-
-        <div class="section-heading">
-
-          <div>
-
-            <div class="section-kicker">
-              01 / PUBLISHED INTELLIGENCE
+        <div class="hero-visual" aria-hidden="true">
+          <div class="orbit">
+            <div class="orbit-ring orbit-ring-outer"></div>
+            <div class="orbit-ring orbit-ring-dashed"></div>
+            <div class="orbit-ring orbit-ring-inner">
+              <div class="orbit-node"></div>
             </div>
-
-            <h2>
-              Postmortem Feed
-            </h2>
-
+            <div class="orbit-scan"></div>
+            <div class="orbit-core">AI</div>
+            <div class="orbit-particle p1"></div>
+            <div class="orbit-particle p2"></div>
           </div>
+        </div>
+      </div>
+    </section>
 
-          <div class="live-label">
+    <!-- ============ AGENT CONNECTION ============ -->
+    <section class="panel connection-panel reveal">
+      <div class="panel-head">
+        <div class="panel-head-label">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          <span>⌁ AGENT CONNECTION</span>
+        </div>
+        <div class="panel-head-badge" id="connectionBadge">READY FOR INPUT</div>
+      </div>
 
-            <span class="status-dot"></span>
+      <form class="connection-form" id="connectionForm">
+        <div class="input-wrap">
+          <span class="input-prefix" aria-hidden="true">ID |</span>
+          <label for="agentId" class="sr-only">Autonomous agent ID</label>
+          <input id="agentId" type="text" autocomplete="off" spellcheck="false"
+                 placeholder="Enter autonomous agent ID (from POST /api/agent/init)" />
+          <span class="input-scanline" aria-hidden="true"></span>
+        </div>
+        <button id="loadBtn" type="submit">
+          <span class="btn-label">LOAD FEED</span>
+          <svg class="btn-arrow" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </form>
 
-            LIVE DATA
+      <div class="connection-foot">
+        <span id="status" class="status">Waiting for an agent connection.</span>
+        <span class="secure-note">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          READ-ONLY · SECURE FEED
+        </span>
+      </div>
+    </section>
 
+    <!-- ============ TELEMETRY ============ -->
+    <section class="telemetry-grid reveal" aria-label="Agent telemetry">
+      <div class="telemetry-card c-cyan">
+        <div class="telemetry-top">
+          <span>PUBLISHED</span>
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <div class="telemetry-value" id="publishedCount">0</div>
+        <p class="telemetry-caption">AI-generated postmortems</p>
+      </div>
+
+      <div class="telemetry-card c-red">
+        <div class="telemetry-top">
+          <span>REJECTED</span>
+          <span class="telemetry-badge" id="rejectedBadge">0</span>
+        </div>
+        <div class="telemetry-value" id="rejectedCount">0</div>
+        <p class="telemetry-caption">Topics filtered by editorial AI</p>
+      </div>
+
+      <div class="telemetry-card c-blue">
+        <div class="telemetry-top">
+          <span>CYCLES</span>
+          <span class="telemetry-badge" id="cyclesBadge">0</span>
+        </div>
+        <div class="telemetry-value" id="cycleCount">0</div>
+        <p class="telemetry-caption">Autonomous evaluation cycles</p>
+      </div>
+
+      <div class="telemetry-card c-green">
+        <div class="telemetry-top">
+          <span>LATEST</span>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pulse-icon" aria-hidden="true"><path d="M4.9 19.1a10 10 0 0 1 0-14.2M19.1 4.9a10 10 0 0 1 0 14.2M8 16a5 5 0 0 1 0-8M16 8a5 5 0 0 1 0 8"/><circle cx="12" cy="12" r="1"/></svg>
+        </div>
+        <div class="telemetry-value telemetry-value-text" id="latestOutcome">—</div>
+        <p class="telemetry-caption">Most recent cycle outcome</p>
+      </div>
+    </section>
+
+    <!-- ============ PUBLISHED INTELLIGENCE ============ -->
+    <section class="content-section reveal">
+      <div class="section-head">
+        <div class="section-head-title">
+          <span class="section-index">01 /</span>
+          <h2>PUBLISHED INTELLIGENCE</h2>
+        </div>
+        <div class="live-badge">
+          <span class="live-dot"></span>
+          <span>LIVE DATA</span>
+        </div>
+      </div>
+      <p class="section-desc">
+        Evidence-backed incident intelligence generated through autonomous discovery,
+        evaluation and editorial reasoning.
+      </p>
+
+      <h3 class="sr-only">Feed</h3>
+      <div id="posts" class="posts">
+        <p class="empty">Enter an agentId above and click "Load feed".</p>
+      </div>
+    </section>
+
+    <!-- ============ DECISION LOG ============ -->
+    <section class="content-section reveal">
+      <div class="section-head">
+        <div class="section-head-title">
+          <span class="section-index">02 /</span>
+          <h2>DECISION LOG</h2>
+        </div>
+        <div class="trace-badge">AUTONOMOUS TRACE</div>
+      </div>
+      <p class="section-desc">
+        Every autonomous cycle leaves a trace. See what the agent rejected, what it
+        published, and how the editorial pipeline resolved each candidate. Shown here for
+        transparency — this is not part of the evaluator-facing API.
+      </p>
+
+      <div class="decision-grid">
+        <div class="decision-panel">
+          <div class="decision-panel-head">
+            <div class="decision-panel-label">
+              <span class="decision-letter c-red">A</span>
+              <h3>REJECTED TOPICS</h3>
+            </div>
+            <span class="decision-count c-red" id="rejectedCountBadge">0</span>
           </div>
-
+          <p class="decision-panel-sub">TOPICS FILTERED BY EDITORIAL AI</p>
+          <div id="rejected" class="rejected-list"></div>
         </div>
 
-
-        <div class="section-intro">
-          Evidence-backed incident intelligence generated
-          through autonomous discovery, evaluation and editorial
-          reasoning.
+        <div class="decision-panel">
+          <div class="decision-panel-head">
+            <div class="decision-panel-label">
+              <span class="decision-letter c-cyan">B</span>
+              <h3>AUTONOMOUS CYCLES</h3>
+            </div>
+            <span class="decision-count c-cyan" id="cyclesCountBadge">0</span>
+          </div>
+          <p class="decision-panel-sub">AGENT EVALUATION HISTORY</p>
+          <div id="cycles" class="cycles-list"></div>
         </div>
+      </div>
+    </section>
 
+  </main>
 
-        <div
-          id="posts"
-          class="posts"
-        >
-
-          <div class="empty-state">
-
-            <div class="empty-icon">
-              ⌁
-            </div>
-
-            <div class="empty-code">
-              FEED / AWAITING CONNECTION
-            </div>
-
-            <h3>
-              No agent connected
-            </h3>
-
-            <p>
-              Enter an agent ID above to load autonomous intelligence.
-            </p>
-
-          </div>
-
-        </div>
-
-      </section>
-
-
-      <!-- =====================================================
-           EDITORIAL ACTIVITY
-      ====================================================== -->
-
-      <section class="content-section activity-section">
-
-        <div class="section-heading">
-
-          <div>
-
-            <div class="section-kicker">
-              02 / DECISION LOG
-            </div>
-
-            <h2>
-              Editorial Activity
-            </h2>
-
-          </div>
-
-          <div class="section-index">
-            AUTONOMOUS TRACE
-          </div>
-
-        </div>
-
-
-        <p class="section-note">
-          Every autonomous cycle leaves a trace. See what the
-          agent rejected, what it published, and how the
-          editorial pipeline resolved each candidate.
-        </p>
-
-
-        <div class="activity-grid">
-
-
-          <!-- REJECTED TOPICS -->
-
-          <div class="activity-panel">
-
-            <div class="panel-header">
-
-              <div class="panel-heading">
-
-                <span class="panel-index">
-                  A
-                </span>
-
-                <span class="panel-title">
-                  REJECTED TOPICS
-                </span>
-
-              </div>
-
-              <span
-                id="rejectedBadge"
-                class="panel-badge"
-              >
-                0
-              </span>
-
-            </div>
-
-
-            <div class="panel-subheader">
-              TOPICS FILTERED BY EDITORIAL AI
-            </div>
-
-
-            <div
-              id="rejected"
-              class="activity-list"
-            >
-
-              <div class="activity-empty">
-                No rejected topics recorded.
-              </div>
-
-            </div>
-
-          </div>
-
-
-          <!-- AUTONOMOUS CYCLES -->
-
-          <div class="activity-panel">
-
-            <div class="panel-header">
-
-              <div class="panel-heading">
-
-                <span class="panel-index">
-                  B
-                </span>
-
-                <span class="panel-title">
-                  AUTONOMOUS CYCLES
-                </span>
-
-              </div>
-
-              <span
-                id="cyclesBadge"
-                class="panel-badge"
-              >
-                0
-              </span>
-
-            </div>
-
-
-            <div class="panel-subheader">
-              AGENT EVALUATION HISTORY
-            </div>
-
-
-            <div
-              id="cycles"
-              class="activity-list"
-            >
-
-              <div class="activity-empty">
-                No autonomous cycles recorded.
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </section>
-
-    </main>
-
-
-    <!-- =====================================================
-         FOOTER
-    ====================================================== -->
-
-    <footer>
-
+  <footer class="site-footer">
+    <div class="footer-inner">
       <div class="footer-brand">
-
-        <strong>
-          POSTMORTEM
-        </strong>
-
-        <span>
-          /
-        </span>
-
-        <span>
-          AUTONOMOUS AI INFRASTRUCTURE OBSERVER
-        </span>
-
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 3 6v6c0 5 3.8 8.7 9 10 5.2-1.3 9-5 9-10V6l-9-4Z"/></svg>
+        <span>POSTMORTEM // AUTONOMOUS AI INFRASTRUCTURE OBSERVER</span>
       </div>
-
-      <div class="footer-right">
-
-        <span>
-          READ-ONLY DASHBOARD
-        </span>
-
-        <span class="footer-dot">
-          ·
-        </span>
-
-        <span>
-          v0.1
-        </span>
-
+      <div class="footer-meta">
+        <span>READ-ONLY DASHBOARD · v0.1</span>
+        <span class="footer-sep">|</span>
+        <span>ABTalks Vibe Code Hackathon — Problem Statement 3</span>
       </div>
+    </div>
+  </footer>
 
-    </footer>
-
-  </div>
-
-
-  <!-- EXISTING APPLICATION LOGIC — DO NOT MODIFY -->
-
-  <script src="./app.js"></script>
-
+  <script src="app.js"></script>
 </body>
 </html>

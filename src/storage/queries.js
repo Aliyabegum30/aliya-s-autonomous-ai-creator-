@@ -138,7 +138,8 @@ async function getRecentSignatures(agentId, limit = 300) {
   const result = await db.query(
     `SELECT
        topic_key,
-       origin
+       origin,
+       created_at
      FROM memory_signatures
      WHERE agent_id = $1
      ORDER BY created_at DESC

@@ -1,32 +1,16 @@
-// STEP 1 (DISCOVER) + STEP 2 (NORMALIZE).
+﻿const { fetchJson, fetchWithTimeout } = require('../utils/http');
+
+// STEP 1 + STEP 2: DISCOVER + NORMALIZE
 //
-// Discovery is intentionally biased toward AI/technology sources.
-// The editorial model should decide what is worth publishing;
-// discovery's job is to give it GOOD candidates.
+// Discovery is deliberately biased toward production AI failures.
+// Editorial judgment remains the final authority.
 //
-// Primary sources:
+// Sources:
 //   1. Hacker News
 //   2. Simon Willison
 //   3. Stack Overflow Blog
 //   4. Hugging Face Blog
 //   5. OpenAI News
-//
-// Hacker News is broad, so candidates are filtered using lightweight
-// relevance signals before they enter the editorial LLM stage.
-//
-// Every candidate returned by discoverTopics() has:
-//
-//   {
-//     title,
-//     url,
-//     snippet,
-//     publishedAt,
-//     sourceName
-//   }
-//
-// Malformed candidates are removed before the rest of the pipeline.
-
-const { fetchJson, fetchWithTimeout } = require('../utils/http');
 
 const HN_TOP_STORIES_URL =
   'https://hacker-news.firebaseio.com/v0/topstories.json';
@@ -37,16 +21,9 @@ const HN_ITEM_URL = (id) =>
 const HN_STORIES_TO_SCAN = 80;
 const HN_CONCURRENCY = 8;
 
-// We want enough candidates for the editorial model to make an actual
-// decision instead of receiving only one or two stories.
 const MIN_CANDIDATES = 8;
 const MAX_CANDIDATES = 30;
 
-// Lightweight discovery-level relevance terms.
-//
-// This is NOT the editorial filter.
-// It only prevents obviously unrelated HN stories from consuming
-// LLM calls.
 const AI_RELEVANCE_KEYWORDS = [
   'ai',
   'artificial intelligence',
@@ -91,7 +68,6 @@ const AI_RELEVANCE_KEYWORDS = [
   'tensorflow',
   'ollama',
   'vllm',
-  'inference',
   'token',
   'tokens',
   'training',
@@ -99,17 +75,12 @@ const AI_RELEVANCE_KEYWORDS = [
   'finetuning',
   'ai security',
   'model security',
-  'ai outage',
-  'ai incident',
-  'ai failure',
   'production ai',
   'mlops',
   'ml pipeline',
   'data pipeline',
 ];
 
-// Stronger signals are useful for ranking HN candidates.
-// These don't automatically publish anything.
 const FAILURE_SIGNALS = [
   'outage',
   'incident',
@@ -142,6 +113,31 @@ const FAILURE_SIGNALS = [
   'unexpected behavior',
   'unexpected behaviour',
   'incident report',
+  'data loss',
+  'data leak',
+  'leaked',
+  'incorrect',
+  'wrong output',
+  'silent failure',
+  'reliability',
+];
+
+const STRONG_FAILURE_SIGNALS = [
+  'postmortem',
+  'root cause',
+  'incident report',
+  'production outage',
+  'production incident',
+  'service outage',
+  'model regression',
+  'silent regression',
+  'data leak',
+  'data loss',
+  'security vulnerability',
+  'memory leak',
+  'resource exhaustion',
+  'rollback',
+  'production failure',
 ];
 
 const RSS_FALLBACK_FEEDS = [
@@ -173,9 +169,13 @@ function isMalformed(candidate) {
   );
 }
 
-/**
- * Run async `fn` over `items` with at most `limit` in flight at once.
- */
+function normalizeText(value) {
+  return String(value || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 async function mapWithConcurrency(items, limit, fn) {
   const results = [];
   let index = 0;
@@ -194,7 +194,6 @@ async function mapWithConcurrency(items, limit, fn) {
   }
 
   const workerCount = Math.min(limit, items.length);
-
   const workers = Array.from(
     { length: workerCount },
     () => worker()
@@ -205,36 +204,74 @@ async function mapWithConcurrency(items, limit, fn) {
   return results;
 }
 
-function normalizeText(value) {
-  return String(value || '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+function countMatches(haystack, keywords) {
+  return keywords.reduce(
+    (count, keyword) =>
+      count + (haystack.includes(keyword) ? 1 : 0),
+    0
+  );
 }
 
 function relevanceScore(candidate) {
   const haystack =
     `${candidate.title || ''} ${candidate.snippet || ''}`.toLowerCase();
 
+  const aiMatches = countMatches(
+    haystack,
+    AI_RELEVANCE_KEYWORDS
+  );
+
+  const failureMatches = countMatches(
+    haystack,
+    FAILURE_SIGNALS
+  );
+
+  const strongFailureMatches = countMatches(
+    haystack,
+    STRONG_FAILURE_SIGNALS
+  );
+
   let score = 0;
 
-  for (const keyword of AI_RELEVANCE_KEYWORDS) {
-    if (haystack.includes(keyword)) {
-      score += 2;
-    }
+  score += aiMatches * 2;
+  score += failureMatches * 3;
+  score += strongFailureMatches * 5;
+
+  // Prefer stories that contain both an AI signal and
+  // an actual failure/incident signal.
+  if (aiMatches > 0 && failureMatches > 0) {
+    score += 8;
   }
 
-  for (const signal of FAILURE_SIGNALS) {
-    if (haystack.includes(signal)) {
-      score += 3;
-    }
+  // Strong incident language is especially valuable.
+  if (strongFailureMatches > 0) {
+    score += 10;
   }
 
   return score;
 }
 
 function isAiRelevant(candidate) {
-  return relevanceScore(candidate) >= 2;
+  const haystack =
+    `${candidate.title || ''} ${candidate.snippet || ''}`.toLowerCase();
+
+  const aiMatches = countMatches(
+    haystack,
+    AI_RELEVANCE_KEYWORDS
+  );
+
+  const failureMatches = countMatches(
+    haystack,
+    FAILURE_SIGNALS
+  );
+
+  // Require either:
+  //   - two independent AI/technology signals, or
+  //   - one AI signal plus one failure signal.
+  return (
+    aiMatches >= 2 ||
+    (aiMatches >= 1 && failureMatches >= 1)
+  );
 }
 
 function sortByRelevance(candidates) {
@@ -258,14 +295,53 @@ function sortByRelevance(candidates) {
   });
 }
 
+function candidateKey(candidate) {
+  const url = String(candidate.url || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\/+$/, '');
+
+  if (url) {
+    return `url:${url}`;
+  }
+
+  return `title:${String(candidate.title || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')}`;
+}
+
+function deduplicateCandidates(candidates) {
+  const seen = new Set();
+  const result = [];
+
+  for (const candidate of candidates) {
+    const key = candidateKey(candidate);
+
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    result.push(candidate);
+  }
+
+  return result;
+}
+
 async function discoverFromHackerNews() {
   const ids = await fetchJson(HN_TOP_STORIES_URL);
 
   if (!Array.isArray(ids) || ids.length === 0) {
-    throw new Error('Hacker News returned no top story ids.');
+    throw new Error(
+      'Hacker News returned no top story ids.'
+    );
   }
 
-  const idsToFetch = ids.slice(0, HN_STORIES_TO_SCAN);
+  const idsToFetch = ids.slice(
+    0,
+    HN_STORIES_TO_SCAN
+  );
 
   const items = await mapWithConcurrency(
     idsToFetch,
@@ -286,7 +362,10 @@ async function discoverFromHackerNews() {
       url:
         item.url ||
         `https://news.ycombinator.com/item?id=${item.id}`,
-      snippet: normalizeText(item.text || '').slice(0, 500),
+      snippet: normalizeText(item.text || '').slice(
+        0,
+        500
+      ),
       publishedAt: item.time
         ? new Date(item.time * 1000).toISOString()
         : null,
@@ -300,37 +379,24 @@ async function discoverFromHackerNews() {
     );
   }
 
-  // Remove obviously unrelated stories before LLM scoring.
-  const relevant = normalized.filter(isAiRelevant);
-
-  const ranked = sortByRelevance(relevant).slice(
-    0,
-    MAX_CANDIDATES
-  );
-
-  if (ranked.length < MIN_CANDIDATES) {
-    // Do not fail discovery merely because HN had a slow AI-news day.
-    // The RSS fallback will provide additional AI-focused candidates.
-    throw new Error(
-      `Hacker News produced only ${ranked.length} relevant candidates.`
-    );
-  }
-
-  return ranked;
+  return normalized.filter(isAiRelevant);
 }
 
-/**
- * Minimal dependency-free RSS/Atom parser.
- */
 function parseFeedXml(xml, sourceName) {
   if (typeof xml !== 'string' || xml.length === 0) {
     return [];
   }
 
+  const itemMatches =
+    xml.match(/<item[\s\S]*?<\/item>/gi) || [];
+
+  const entryMatches =
+    xml.match(/<entry[\s\S]*?<\/entry>/gi) || [];
+
   const entryBlocks =
-    xml.match(/<item[\s\S]*?<\/item>/gi) ||
-    xml.match(/<entry[\s\S]*?<\/entry>/gi) ||
-    [];
+    itemMatches.length > 0
+      ? itemMatches
+      : entryMatches;
 
   const extract = (block, tag) => {
     const match = block.match(
@@ -340,7 +406,9 @@ function parseFeedXml(xml, sourceName) {
       )
     );
 
-    if (!match) return '';
+    if (!match) {
+      return '';
+    }
 
     return match[1]
       .replace(/^<!\[CDATA\[/, '')
@@ -351,7 +419,6 @@ function parseFeedXml(xml, sourceName) {
   };
 
   const extractLink = (block) => {
-    // Atom:
     const atomLink = block.match(
       /<link[^>]*href=["']([^"']+)["'][^>]*>/i
     );
@@ -360,14 +427,12 @@ function parseFeedXml(xml, sourceName) {
       return atomLink[1];
     }
 
-    // RSS:
     return extract(block, 'link');
   };
 
   return entryBlocks
     .map((block) => {
       const title = extract(block, 'title');
-
       const url = extractLink(block);
 
       const snippet = (
@@ -422,72 +487,74 @@ async function discoverFromRss() {
 
       allCandidates.push(...candidates);
     } catch (err) {
-      // One unavailable feed must not kill discovery.
       continue;
     }
   }
 
   if (allCandidates.length === 0) {
     throw new Error(
-      'RSS fallback produced no usable candidates.'
+      'RSS sources produced no usable candidates.'
     );
   }
 
-  const relevant = allCandidates.filter(isAiRelevant);
-
-  const ranked = sortByRelevance(relevant).slice(
-    0,
-    MAX_CANDIDATES
-  );
-
-  if (ranked.length === 0) {
-    throw new Error(
-      'RSS fallback produced no AI/technology candidates.'
-    );
-  }
-
-  return ranked;
+  return allCandidates.filter(isAiRelevant);
 }
 
-/**
- * Discover live candidates.
- *
- * Strategy:
- *
- * 1. Try HN.
- * 2. If HN gives enough relevant candidates, use it.
- * 3. If HN is unavailable or too broad, use RSS.
- * 4. If RSS is also unavailable, report source_failure.
- */
 async function discoverTopics() {
+  let hnCandidates = [];
+  let rssCandidates = [];
   let hnError = null;
+  let rssError = null;
 
   try {
-    const candidates = await discoverFromHackerNews();
-
-    return {
-      candidates,
-      sourceUsed: 'hackernews',
-    };
+    hnCandidates = await discoverFromHackerNews();
   } catch (err) {
     hnError = err;
   }
 
   try {
-    const candidates = await discoverFromRss();
+    rssCandidates = await discoverFromRss();
+  } catch (err) {
+    rssError = err;
+  }
 
-    return {
-      candidates,
-      sourceUsed: 'rss',
-      hnError: hnError ? hnError.message : null,
-    };
-  } catch (rssErr) {
+  const combined = deduplicateCandidates([
+    ...hnCandidates,
+    ...rssCandidates,
+  ]);
+
+  if (combined.length === 0) {
     throw new Error(
-      `All discovery sources failed. HN: ${
-        hnError ? hnError.message : 'unknown error'
-      } | RSS: ${rssErr.message}`
+      `All discovery sources failed or produced no relevant candidates. ` +
+      `HN: ${hnError ? hnError.message : 'ok'} | ` +
+      `RSS: ${rssError ? rssError.message : 'ok'}`
     );
   }
+
+  const ranked = sortByRelevance(combined).slice(
+    0,
+    MAX_CANDIDATES
+  );
+
+  if (ranked.length < MIN_CANDIDATES) {
+    throw new Error(
+      `Discovery produced only ${ranked.length} relevant candidates. ` +
+      `HN: ${hnError ? hnError.message : 'ok'} | ` +
+      `RSS: ${rssError ? rssError.message : 'ok'}`
+    );
+  }
+
+  return {
+    candidates: ranked,
+    sourceUsed: [
+      hnCandidates.length > 0 ? 'hackernews' : null,
+      rssCandidates.length > 0 ? 'rss' : null,
+    ]
+      .filter(Boolean)
+      .join('+'),
+    hnError: hnError ? hnError.message : null,
+    rssError: rssError ? rssError.message : null,
+  };
 }
 
 module.exports = {
@@ -498,4 +565,5 @@ module.exports = {
   isMalformed,
   relevanceScore,
   isAiRelevant,
+  deduplicateCandidates,
 };

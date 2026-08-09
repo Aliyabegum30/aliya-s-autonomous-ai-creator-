@@ -1,308 +1,642 @@
 # PROMPTS.md — AI Usage Log
 
-This log records meaningful AI-assisted development sessions with Claude for
-the Postmortem Agent hackathon project. Entries are added as development
-happens, not written retroactively. Nothing below is fabricated — each entry
-reflects an actual prompt from this conversation.
+This log records meaningful AI-assisted development sessions with Claude for the Postmortem Agent hackathon project. Entries are added as development happens, not written retroactively. Nothing below is fabricated — each entry reflects an actual prompt, debugging exchange, implementation decision, or verification step from the development process.
 
 ---
 
 ## Session 1 — Requirement analysis
 
 ### Prompt
-A detailed hackathon-partner instruction set establishing working rules
-(analyze before coding, don't invent requirements, prioritize simplicity),
-followed by the full ABTalks "Autonomous AI Creator" problem statement, and
-a request for a Phase 1 requirement analysis covering: mandatory
-requirements, evaluation-critical requirements, API contract, data
-requirements, autonomous behavior, failure cases, out-of-scope items, and a
-Definition of Done.
+
+A detailed hackathon-partner instruction set establishing working rules (analyze before coding, don't invent requirements, prioritize simplicity), followed by the full ABTalks "Autonomous AI Creator" problem statement, and a request for a Phase 1 requirement analysis covering: mandatory requirements, evaluation-critical requirements, API contract, data requirements, autonomous behavior, failure cases, out-of-scope items, and a Definition of Done.
 
 ### Purpose
-Establish a shared, precise understanding of the hackathon requirements
-before any design or code decisions were made.
+
+Establish a shared, precise understanding of the hackathon requirements before any design or code decisions were made.
 
 ### Result
-Produced a full Phase 1 analysis: mandatory requirements list, the exact
-`POST /api/agent/init` / `GET /api/agent/feed` contract, data/persistence
-requirements, explicit autonomous-behavior constraints (nothing may depend
-on another request after init), failure-case handling, out-of-scope
-features, and a Definition of Done checklist. No code written.
+
+Produced a full Phase 1 analysis covering the mandatory requirements, the exact `POST /api/agent/init` / `GET /api/agent/feed` contract, data and persistence requirements, explicit autonomous-behavior constraints, failure-case handling, out-of-scope features, and a Definition of Done checklist.
+
+The analysis established the key architectural requirement that the agent must continue producing work independently after initialization rather than relying on the evaluator repeatedly triggering generation.
+
+No code was written in this session.
 
 ### Human Decision
-Approved. Asked for a deployment recommendation and the full architecture
-(Phases 2–13) before any implementation.
+
+Approved. Asked for a deployment recommendation and the full architecture before implementation.
 
 ---
 
 ## Session 2 — Deployment comparison and full architecture
 
 ### Prompt
-Requested a comparison of three deployment approaches (Render/Railway/Fly
-with an in-process scheduler; Vercel/serverless with an external scheduler;
-any other genuinely better option), followed by the complete architecture,
-data model, autonomous loop, persona proposal, editorial scoring design,
-memory strategy, live discovery design, LLM comparison, API contract
-confirmation, and demonstration UI plan.
+
+Requested a comparison of deployment approaches including Render/Railway/Fly with an in-process scheduler, Vercel/serverless with an external scheduler, and any genuinely better option, followed by the complete architecture, data model, autonomous loop, persona proposal, editorial scoring design, memory strategy, live discovery design, LLM comparison, API contract confirmation, and demonstration UI plan.
 
 ### Purpose
-Lock in the deployment model and full system design before writing any
-code, since the deployment choice determines whether autonomy after `init`
-is genuine or fragile.
+
+Lock in the deployment model and complete system design before implementation, because the deployment decision determines whether autonomous execution after initialization is genuine or fragile.
 
 ### Result
-Compared current (2026) free-tier behavior across Render, Railway, Fly.io,
-and Vercel (verified via web search, since free-tier terms change often).
-Recommended a hybrid: Render (free, long-running Express app) + GitHub
-Actions as an external scheduler + hosted Postgres — because it keeps
-autonomy genuinely decoupled from both the app process and the evaluator's
-requests, without relying on a free tier that no longer reliably exists.
-Produced the full architecture, data model, autonomous loop stages, a first
-persona draft, editorial scoring design, memory strategy (keyword-signature
-similarity, no vector DB), live discovery plan (Hacker News API + RSS
-fallback), and a runtime LLM comparison (Gemini primary, Groq fallback). No
-code written.
+
+Compared current deployment options and recommended a hybrid architecture:
+
+* Render for the long-running Express application.
+* GitHub Actions as the external scheduler.
+* Hosted PostgreSQL for persistence.
+* Gemini as the primary runtime LLM.
+* Groq as the fallback LLM.
+* Hacker News as the primary discovery source.
+* RSS/Atom feeds as the discovery fallback.
+
+The architecture deliberately avoids depending on an in-process timer for autonomy. The scheduler remains external to the application process, allowing the evaluator-facing API to remain read-only after initialization.
+
+The design also introduced:
+
+* A deterministic filtering stage.
+* Editorial scoring across multiple dimensions.
+* Memory-based duplicate detection.
+* Grounded generation from discovered sources.
+* Post validation.
+* Cycle-run tracking.
+* A read-only demonstration UI.
 
 ### Human Decision
-Approved the direction, then asked for a more concise, decision-oriented
-finalization pass before coding.
+
+Approved the architecture and requested a more concise decision-oriented finalization pass before coding.
 
 ---
 
 ## Session 3 — Concise final architecture decisions
 
 ### Prompt
-Asked for a shortened, decision-only pass covering: deployment choice,
-scheduler mechanics, persistence choice, runtime LLM choice, live discovery
-source, one combined architecture diagram, top 5 risks with mitigations,
-and an 8–12 step implementation order — explicitly without repeating
-earlier requirement explanations.
+
+Asked for a shortened, decision-only pass covering deployment choice, scheduler mechanics, persistence choice, runtime LLM choice, live discovery source, one combined architecture diagram, the top five risks with mitigations, and an 8–12 step implementation order.
 
 ### Purpose
-Convert the full design into a crisp, unambiguous final decision set ready
-to implement against.
+
+Convert the full design into a crisp implementation decision set without repeating earlier requirement explanations.
 
 ### Result
-Finalized: Render + GitHub Actions (hourly-ish) as the scheduler, hosted
-Postgres, Gemini primary / Groq fallback, Hacker News API + RSS fallback,
-a single combined architecture diagram, a 5-item risk register, and a
-12-step implementation order.
+
+Finalized:
+
+* Render + GitHub Actions for autonomous scheduling.
+* Hosted PostgreSQL for persistence.
+* Gemini primary / Groq fallback for runtime LLM execution.
+* Hacker News + RSS fallback for live discovery.
+* A ten-stage autonomous cycle.
+* Explicit failure handling and cycle recording.
+* A read-only evaluator feed.
+* A protected internal cycle endpoint.
 
 ### Human Decision
-Approved with two modifications: (1) use an approximately hourly GitHub
-Actions schedule specifically, not an in-process timer under any
-circumstance; (2) treat `POST /internal/run-cycle` strictly as a protected
-internal route, separate from the evaluator-facing contract, with
-`GET /api/agent/feed` remaining strictly read-only. Also requested 3
-persona options (avoiding generic "AI analyst" personas) before coding.
+
+Approved with two important constraints:
+
+1. Use an approximately hourly GitHub Actions schedule rather than an in-process timer under any circumstance.
+2. Treat `POST /internal/run-cycle` strictly as a protected internal route, separate from the evaluator-facing API contract.
+
+Also reconfirmed that `GET /api/agent/feed` must remain strictly read-only and must never trigger generation.
+
+Requested three distinctive personas before implementation.
 
 ---
 
 ## Session 4 — Persona proposal and design finalization
 
 ### Prompt
-Requested three distinctive, non-generic AI/technology personas (each with
-name, domain, audience, mission, tone, editorial beliefs, followed/rejected
-topics, and example opinions), a recommendation of one, and the final
-simplified architecture, autonomous cycle, database tables, and
-implementation order incorporating the Session 3 modifications.
+
+Requested three distinctive, non-generic AI/technology personas, each with a name, domain, audience, mission, tone, editorial beliefs, followed/rejected topics, and example opinions, followed by a recommendation and the final simplified architecture, autonomous cycle, database tables, and implementation order.
 
 ### Purpose
-Give the agent a genuine, defensible editorial point of view (not a news
-summarizer) and lock the design that implementation would follow.
+
+Give the agent a genuine editorial point of view rather than creating another generic AI-news summarizer.
 
 ### Result
-Proposed three personas: "Postmortem" (production AI failure analyst),
-"Open Weights" (open-source accountability), and "Signal Loss" (applied
-systems reality-check). Recommended "Postmortem" for having the sharpest,
-most consistently applicable editorial test and the least risk of drifting
-into generic AI-commentary voice. Finalized the two-path architecture
-diagram (evaluator-facing vs. autonomous), the 10-stage autonomous cycle,
-the five database tables, and a 12-step implementation order.
+
+Proposed three personas:
+
+* **Postmortem** — production AI failure analysis.
+* **Open Weights** — open-source accountability.
+* **Signal Loss** — applied systems reality-check.
+
+Recommended **Postmortem** because it provided the clearest editorial test and the strongest alignment with the requirement to produce useful, technically grounded AI content.
+
+The final design established:
+
+* The Postmortem persona.
+* A two-path architecture separating evaluator-facing API traffic from autonomous execution.
+* A ten-stage autonomous cycle.
+* Five PostgreSQL tables.
+* Memory signatures for duplicate detection.
+* Editorial acceptance/rejection.
+* Grounded post generation.
+* Protected internal scheduling.
 
 ### Human Decision
-Approved the persona and full design. Requested two further constraints
-before coding: (1) no `/admin` API endpoint — editorial rejections surface
-in the demo UI later, not as a separate API surface; (2) reconfirmed
-`GET /api/agent/feed` must never trigger generation under any
-circumstance. Instructed to begin implementation, Step 1 only.
+
+Approved the persona and architecture.
+
+Two additional constraints were established:
+
+1. Do not create an `/admin` API endpoint.
+2. `GET /api/agent/feed` must never trigger generation.
+
+Editorial rejections would instead be visible through the demonstration UI.
+
+Implementation began with the approved step-by-step plan.
 
 ---
 
-## Session 5 — Step 1 implementation: repo, environment, schema
+## Session 5 — Step 1 implementation: repository, environment, schema
 
 ### Prompt
-Instructed to implement Step 1 only: project structure, `.env.example`,
-`.gitignore`, the PostgreSQL schema/migration for `agents`, `posts`,
-`memory_signatures`, `rejected_topics`, `cycle_runs`, a minimal database
-connection layer, and a basic `README.md` — explicitly no agent loop, no
-LLM integration, no topic discovery, and no frontend yet. Also requested
-this file be created now with only real prompts recorded so far.
+
+Instructed implementation of Step 1 only: project structure, `.env.example`, `.gitignore`, the PostgreSQL schema/migration for `agents`, `posts`, `memory_signatures`, `rejected_topics`, and `cycle_runs`, a minimal database connection layer, and a basic `README.md`.
+
+Explicitly excluded from this step were the agent loop, LLM integration, topic discovery, frontend, and other later-stage functionality.
 
 ### Purpose
-Stand up the foundation (structure, config, persistence layer) that every
-later step builds on, without getting ahead of the approved step-by-step
-order.
+
+Establish the persistence and configuration foundation without getting ahead of the approved implementation order.
 
 ### Result
-Created `package.json` (dependencies: `pg`, `dotenv` only), `.env.example`,
-`.gitignore`, `src/storage/schema.sql` (five tables per the approved data
-model), `src/storage/db.js` (shared connection pool), `scripts/migrate.js`
-and `scripts/check-db.js`, `README.md`, and this file.
+
+Created:
+
+* `package.json`
+* `.env.example`
+* `.gitignore`
+* `src/storage/schema.sql`
+* `src/storage/db.js`
+* `scripts/migrate.js`
+* `scripts/check-db.js`
+* `README.md`
+* `PROMPTS.md`
+
+The database schema established the five approved tables, while the connection layer provided the shared PostgreSQL access used by later stages.
 
 ### Human Decision
-Approved. Proceeded to Step 2.
+
+Approved Step 1 and proceeded to Step 2.
 
 ---
 
-## Session 6 — Step 2 implementation: POST /api/agent/init
+## Session 6 — Step 2 implementation: `POST /api/agent/init`
 
 ### Prompt
-Handoff instructions for a new session taking over the existing project
-(attached as a ZIP): inspect the current Step 1 files first, confirm they
-match the described state, then implement Step 2 only —
-`POST /api/agent/init` — with input validation, a generated `agentId`
-persisted to the `agents` table via the existing `src/storage/db.js`, and
-safe database-error handling. Explicitly out of scope for this step:
-`GET /api/agent/feed`, the autonomous loop, topic discovery, LLM
-integration, GitHub Actions, deployment, frontend, and any extra
-architecture.
+
+Provided handoff instructions for a new session taking over the existing project, with the requirement to inspect the current Step 1 files first and confirm their state before implementing Step 2 only.
+
+The requested implementation was `POST /api/agent/init`, including input validation, generation and persistence of an `agentId`, database insertion through the existing connection layer, and safe database-error handling.
+
+Explicitly excluded from this step were `GET /api/agent/feed`, the autonomous loop, discovery, LLM integration, GitHub Actions, deployment, frontend work, and unrelated architecture changes.
 
 ### Purpose
-Stand up the minimal evaluator-facing `init` endpoint on top of the
-existing Step 1 schema/connection layer, without getting ahead of the
-approved step-by-step order.
+
+Build the minimal evaluator-facing initialization endpoint on top of the approved Step 1 foundation.
 
 ### Result
-Inspected the attached ZIP and confirmed it matched the Step 1 description
-(package.json with only `pg`/`dotenv`, `.env.example`, `.gitignore`,
-`src/storage/schema.sql`, `src/storage/db.js`, `scripts/migrate.js`,
-`scripts/check-db.js`, `README.md`, `PROMPTS.md`) with no discrepancies.
-Added `express` as a dependency and an `npm start` script. Created
-`src/app.js` (Express app, JSON body parsing, `POST /api/agent/init` with
-validation of `persona.name`/`persona.domain`, an `INSERT` into `agents`
-using the existing `query()` helper, and try/catch error handling returning
-a 500 on database failure) and `src/server.js` (binds the app to a port).
-Did not modify the database schema or touch any Step 3+ concerns.
+
+Inspected the existing project and confirmed that it matched the expected Step 1 state.
+
+Added:
+
+* `express` dependency.
+* `npm start` script.
+* `src/app.js`.
+* `src/server.js`.
+
+Implemented `POST /api/agent/init` with:
+
+* Request validation.
+* Persona name/domain validation.
+* Generated agent IDs.
+* Persistence through the existing PostgreSQL query layer.
+* Database failure handling.
+* Appropriate HTTP responses.
+
+The database schema was not changed.
 
 ### Human Decision
-Approved. Proceeded to implement the full remaining system in one session
-(see Session 7).
+
+Approved Step 2 and then authorized implementation of the remaining system in one session.
 
 ---
 
-## Session 7 — Full remaining system: discovery, editorial judgment, memory,
-generation, scheduler endpoint, frontend, tests, docs
+## Session 7 — Full remaining system: discovery, editorial judgment, memory, generation, scheduler, frontend, tests, and documentation
 
 ### Prompt
-Handoff instructions confirming the verified Step 1+2 state (Neon
-connected, migration applied, a real agent persisted via
-`POST /api/agent/init`), then instructing implementation of the entire
-remaining system in one batch without stopping for approval between
-sub-steps: the full DISCOVER→NORMALIZE→FILTER→MEMORY CHECK→EDITORIAL
-JUDGMENT→SELECT→GENERATE→VALIDATE→STORE→COMPLETE pipeline; `GET
-/api/agent/feed` (strictly read-only); the protected
-`POST /internal/run-cycle` endpoint; a GitHub Actions hourly scheduler
-workflow; a read-only demo frontend; practical tests; and updated
-README/PROMPTS/.env.example — using the existing database, LLM (Gemini
-primary, Groq fallback), and discovery source (Hacker News + RSS fallback)
-choices already locked in earlier sessions, without redesigning the schema
-or introducing new infrastructure.
+
+Provided handoff instructions confirming the verified Step 1 + Step 2 state and instructed implementation of the remaining system in one batch without stopping for approval between sub-steps.
+
+The requested system covered the complete:
+
+`DISCOVER → NORMALIZE → FILTER → MEMORY CHECK → EDITORIAL JUDGMENT → SELECT → GENERATE → VALIDATE → STORE → COMPLETE`
+
+pipeline, together with the read-only feed, protected internal cycle endpoint, GitHub Actions scheduler, demonstration frontend, tests, documentation, existing database, Gemini/Groq runtime choices, and Hacker News/RSS discovery choices.
 
 ### Purpose
-Complete the hackathon submission's core autonomy requirement: a system
-that discovers topics, exercises real editorial judgment (including
-rejecting things), remembers what it has covered, and keeps publishing on
-a schedule that runs independently of the evaluator's `GET /feed` polling.
+
+Complete the core hackathon requirement: an autonomous agent that discovers topics, exercises genuine editorial judgment, rejects unsuitable topics, remembers previous work, generates grounded posts, persists its results, and continues operating independently of evaluator feed requests.
 
 ### Result
-Implemented, in `src/agent/`: `discovery.js` (Hacker News Firebase API
-primary, small curated RSS/Atom fallback via a dependency-free parser,
-concurrency-limited item fetching, timeout-protected HTTP throughout),
-`filter.js` (deterministic avoid-list keyword + freshness filter before
-any LLM call), `memory.js` (exact + Jaccard-similarity near-duplicate
-detection against `memory_signatures`, no vector database), `editorial.js`
-(batched Gemini structured-JSON scoring across six dimensions with a
-numeric-floor-plus-LLM-boolean acceptance rule), `generator.js`
-(Gemini-generated post text + rationale grounded strictly in the
-discovered source), `validator.js` (non-empty fields, valid ISO 8601 UTC
-timestamp, a groundedness check that the actually-discovered URL appears
-in sources, near-duplicate-text rejection against recent posts), and
-`controller.js` (orchestrates all ten steps, with a per-stage try/catch so
-every documented failure mode — source down, all rejected, LLM failure —
-ends the cycle with a recorded `cycle_runs` outcome instead of crashing,
-plus an overlap guard against a still-`in_progress` prior cycle).
 
-Added `src/utils/http.js` (AbortController-based timeout wrapper),
-`src/utils/similarity.js` (topic-key + Jaccard similarity — caught and
-fixed a real bug here during testing: the original tokenizer dropped all
-2-letter words, which silently stripped "AI" out of every topic
-signature), `src/utils/llm.js` (Gemini primary / Groq fallback, JSON
-parsing with markdown-fence stripping), and `src/persona/postmortem.js`
-(single source of truth for the persona's voice, beliefs, and avoid-list,
-consumed by filter/editorial/generator instead of each duplicating it).
+Implemented the complete application.
 
-Added `src/storage/queries.js` centralizing all SQL against the five
-existing tables — did not modify `schema.sql`, per the constraint that the
-existing design was already sufficient.
+#### Discovery and normalization
 
-Added `src/routes/agent.js` (rewriting `POST /api/agent/init` to persist
-via the new queries module and fire a best-effort, non-blocking initial
-cycle after responding; `GET /api/agent/feed` validating `agentId` shape,
-404 for unknown agents, strictly read-only) and `src/routes/internal.js`
-(`POST /internal/run-cycle` behind a `Bearer RUN_CYCLE_SECRET` check,
-looking up the agent before running a cycle; `GET /internal/demo-data`, an
-unauthenticated but strictly read-only endpoint for the demo page to show
-persona/posts/rejected-topics/cycle-runs together — kept outside the
-evaluator contract per the earlier "no `/admin` API endpoint" constraint).
-Rewrote `src/app.js` to wire both route modules plus `express.static` for
-the demo frontend and a `/health` check.
+Created `src/agent/discovery.js` with:
 
-Built the demo frontend (`public/index.html`, `style.css`, `app.js`): a
-read-only page taking a pasted `agentId`, showing persona identity/mission,
-the live feed via the real `GET /api/agent/feed`, and editorial
-transparency (recent rejections and cycle outcomes) via
-`GET /internal/demo-data`. Added `.github/workflows/agent-cycle.yml`
-(hourly cron + `workflow_dispatch`, calling `POST /internal/run-cycle`
-with three required repository secrets: `APP_BASE_URL`,
-`RUN_CYCLE_SECRET`, `AGENT_ID`).
+* Hacker News Firebase API discovery.
+* AI/technology relevance filtering.
+* Production-failure-oriented relevance signals.
+* Concurrency-limited Hacker News item retrieval.
+* RSS/Atom fallback feeds.
+* Dependency-free feed parsing.
+* HTTP timeout handling.
+* Candidate normalization.
+* Candidate ranking.
 
-Added `test/*.test.js` using Node's built-in `node:test` runner (no new
-dependencies): pure-logic tests for similarity, the deterministic filter,
-the RSS/Atom parser, editorial score validation, and post validation; full
-pipeline tests for `controller.runCycle` with every dependency
-(discovery/memory/editorial/generator/database) mocked, covering a
-successful publish, a source failure, an all-rejected editorial outcome, a
-duplicate-memory rejection alongside a surviving candidate, an LLM
-failure, and the in-progress overlap guard; and route-level tests against
-the real Express app with the database and cycle runner mocked, covering
-valid/invalid `init`, missing/malformed/unknown `agentId` on `feed`, feed
-ordering and response shape, and the auth/lookup/success paths on
-`run-cycle`. Ran the full suite (48 tests) to a clean pass.
+The discovery layer was deliberately kept separate from editorial judgment so discovery provides candidates while the editorial model decides what is actually worth publishing.
 
-This development sandbox has no network access — `npm install`,
-`hacker-news.firebaseio.com`, Neon, and the Gemini/Groq APIs were all
-unreachable from here (confirmed directly: a `curl` to the Hacker News API
-returned an `x-deny-reason: host_not_allowed` proxy error, and `npm
-install` returned 403s against the npm registry). To still exercise
-`controller.test.js` and `routes.test.js` — which require `pg`, `dotenv`,
-and `express` to be resolvable — minimal hand-written stand-ins for those
-three packages were placed in `node_modules/` temporarily, used only to
-run the offline test suite in this sandbox, and deleted before packaging
-the final deliverable; they are not part of what was handed back, and
-`npm install` fetches the real packages. While building the Express
-stand-in, its first version didn't support middleware chains
-(`router.post(path, authMiddleware, handler)`), which surfaced as one
-failing test; fixed the stand-in (not application code) once traced. Did
-not fabricate a live end-to-end run — README.md explicitly lists what was
-and wasn't verified against real infrastructure, with a manual verification
-procedure for the person to run against their real Neon/Gemini credentials.
+#### Deterministic filtering
 
-Updated `README.md` (architecture, full API reference, environment
-variables, local setup, deployment steps, GitHub Actions secrets, testing
-section with an explicit "what has and hasn't been verified" disclosure,
-project structure, known limitations) and `.env.example` (comments
-reflecting the completed system rather than the Step 1 placeholder note).
+Created `src/agent/filter.js` with:
+
+* Persona-based avoid-list filtering.
+* Freshness filtering.
+* A maximum candidate age.
+* Rejection records suitable for `rejected_topics`.
+
+This keeps obvious low-quality candidates away from the LLM stage and reduces unnecessary LLM usage.
+
+#### Memory
+
+Created `src/agent/memory.js` with:
+
+* Exact topic detection.
+* Near-duplicate detection.
+* Memory-signature persistence.
+* Jaccard-based similarity.
+* No vector database requirement.
+
+A real tokenizer issue was discovered during testing: the initial similarity implementation unintentionally removed two-letter words, which silently removed `"AI"` from topic signatures. The issue was traced and corrected.
+
+#### Editorial judgment
+
+Created `src/agent/editorial.js` with structured LLM scoring across six editorial dimensions.
+
+The acceptance rule combines numeric thresholds with the LLM's explicit acceptance decision rather than allowing a model-generated boolean by itself to determine publication.
+
+This preserves the intended Postmortem editorial standard:
+
+> A failure without a named mechanism is gossip, not a postmortem.
+
+#### Generation
+
+Created `src/agent/generator.js` to generate grounded Postmortem-style content from the selected discovered source and editorial rationale.
+
+The generator is instructed to stay grounded in the discovered material rather than inventing an unrelated article.
+
+#### Validation
+
+Created `src/agent/validator.js` with checks for:
+
+* Required fields.
+* Valid timestamps.
+* ISO 8601 UTC timestamps.
+* Source grounding.
+* Presence of the actually discovered URL in the generated source set.
+* Near-duplicate generated post text.
+
+#### Controller
+
+Created `src/agent/controller.js` to orchestrate the complete autonomous cycle.
+
+The controller records cycle outcomes and handles failures at each major stage instead of allowing an individual failure to crash the application.
+
+Implemented failure paths include:
+
+* Discovery/source failure.
+* Deterministic rejection.
+* Memory duplicate rejection.
+* All-candidates-rejected outcome.
+* LLM failure.
+* Generation failure.
+* Validation failure.
+* Database failure.
+* Overlapping `in_progress` cycle protection.
+
+#### Utilities
+
+Added:
+
+* `src/utils/http.js` for timeout-protected HTTP requests.
+* `src/utils/similarity.js` for topic keys and similarity calculations.
+* `src/utils/llm.js` for Gemini primary / Groq fallback execution and structured JSON parsing.
+* `src/persona/postmortem.js` as the single source of truth for the Postmortem editorial identity.
+
+#### Database access
+
+Added `src/storage/queries.js` to centralize SQL operations against the existing five-table schema.
+
+The database schema itself was not redesigned.
+
+#### Routes
+
+Added `src/routes/agent.js`:
+
+* `POST /api/agent/init`
+* `GET /api/agent/feed`
+
+The feed remains strictly read-only.
+
+Initialization responds first and then starts the initial cycle on a best-effort, non-blocking basis.
+
+Added `src/routes/internal.js`:
+
+* Protected `POST /internal/run-cycle`.
+* Read-only `GET /internal/demo-data`.
+
+The internal cycle route requires the configured bearer secret and verifies that the target agent exists before execution.
+
+The demo-data route was intentionally kept separate from the evaluator contract and does not provide an administrative mutation API.
+
+#### Autonomous scheduling
+
+Added `.github/workflows/agent-cycle.yml` with:
+
+* Hourly scheduling.
+* Manual `workflow_dispatch`.
+* `APP_BASE_URL` secret.
+* `RUN_CYCLE_SECRET` secret.
+* `AGENT_ID` secret.
+* HTTP invocation of the protected internal cycle route.
+
+This ensures autonomous execution is not dependent on an evaluator calling the feed endpoint.
+
+#### Demo frontend
+
+Built the read-only demonstration UI:
+
+* `public/index.html`
+* `public/style.css`
+* `public/app.js`
+
+The UI shows:
+
+* Agent identity.
+* Persona mission.
+* Published posts.
+* Editorial rejections.
+* Cycle outcomes.
+* The live evaluator feed.
+
+#### Testing
+
+Added tests using Node's built-in `node:test` runner.
+
+Coverage includes:
+
+* Similarity logic.
+* Deterministic filtering.
+* RSS/Atom parsing.
+* Editorial score validation.
+* Post validation.
+* Successful pipeline execution.
+* Discovery failure.
+* All-rejected cycles.
+* Duplicate-memory rejection.
+* LLM failure.
+* Overlap protection.
+* `POST /api/agent/init`.
+* `GET /api/agent/feed`.
+* Invalid and unknown agent IDs.
+* Feed ordering and response shape.
+* Protected cycle-route authentication.
+* Successful cycle execution.
+
+The full offline test suite reached a clean 48-test pass.
+
+Because the development sandbox had no network access, real npm registry, Hacker News, Neon, Gemini, and Groq connectivity could not be exercised there. Temporary local stand-ins were used only to enable offline testing of database-dependent Express/controller paths and were removed before the final deliverable.
+
+No live end-to-end result was fabricated.
 
 ### Human Decision
-Pending review.
+
+Approved the completed system and proceeded to real-environment debugging and final verification.
+
+---
+
+## Session 8 — Final debugging, verification, Git synchronization, and deployment readiness
+
+### Prompt
+
+After deployment-oriented testing, requested help diagnosing the remaining runtime and cycle issues without unnecessarily modifying unrelated files.
+
+The debugging sequence included:
+
+* Inspecting rejected topics and their editorial scores.
+* Running the protected `/internal/run-cycle` endpoint manually.
+* Inspecting cycle-run records.
+* Inspecting `src/agent/discovery.js`, `src/agent/filter.js`, and `src/persona/postmortem.js`.
+* Diagnosing a JavaScript syntax failure caused by accidental PowerShell here-string markers being written into `discovery.js`.
+* Removing the stray `@'` prefix and trailing `'@ | Set-Content ...` text.
+* Running `node --check` against the affected module and other important modules.
+* Starting the Express server.
+* Verifying `/health`.
+* Verifying `GET /api/agent/feed`.
+* Running an actual cycle.
+* Inspecting cycle outcomes and rejection data.
+* Checking Git status and diffs.
+* Removing the temporary `discovery.js.backup`.
+* Committing the final local changes.
+* Resolving divergence between local `main` and `origin/main`.
+* Merging the remote `main` change.
+* Successfully pushing the resulting `main` branch to GitHub.
+
+The final Git state was verified with:
+
+`git status -sb`
+
+showing the local `main` branch synchronized with `origin/main` and a clean working tree.
+
+### Purpose
+
+Perform the final real-environment debugging and repository synchronization necessary to move the project from "implemented" to "ready for hackathon evaluation" without introducing unnecessary changes to unrelated files.
+
+### Result
+
+A real syntax issue in `src/agent/discovery.js` was identified and fixed.
+
+The issue was not an application-design problem. PowerShell here-string syntax had accidentally become part of the JavaScript source, causing Node.js to fail immediately with:
+
+`SyntaxError: Invalid or unexpected token`
+
+The file was cleaned without changing the surrounding architecture.
+
+The module then passed:
+
+`node --check .\src\agent\discovery.js`
+
+Additional syntax checks were also run against the major agent, route, storage, and editorial modules.
+
+The application successfully started with:
+
+`npm start`
+
+and reported:
+
+`[server] Postmortem agent listening on port 3000`
+
+The health endpoint returned:
+
+`ok`
+
+The evaluator-facing feed endpoint returned the persisted post data for the configured agent.
+
+A real cycle was then executed through the protected internal route. The system correctly recorded editorial outcomes rather than crashing when candidates were unsuitable or already covered.
+
+Earlier rejected-topic inspection demonstrated that the editorial system was actually exercising its rejection logic. Examples included:
+
+* Product announcements being rejected for weak alignment with the Postmortem mission.
+* Human biology/sleep research being rejected as unrelated to production AI failures.
+* Previously covered topics being rejected as duplicates.
+
+This confirmed that the agent was not simply publishing every discovered item.
+
+During repository cleanup:
+
+* The accidental backup file was removed.
+* `.gitignore` changes were retained to prevent local environment files from being committed.
+* The corrected discovery module was committed.
+* The local branch was found to be one commit ahead while the remote branch had also advanced.
+* A rebase attempt did not resolve the divergence cleanly.
+* The remote branch was fetched and merged using Git's `ort` strategy.
+* The resulting merge was successfully pushed to `origin/main`.
+
+Final Git verification showed:
+
+`## main...origin/main`
+
+with a clean working tree.
+
+The final application state therefore includes the implemented autonomous pipeline, protected scheduler endpoint, external GitHub Actions scheduling, persistence, editorial rejection and memory behavior, demonstration UI, tests, documentation, and synchronized source repository.
+
+### Human Decision
+
+Final project state approved.
+
+The Postmortem Agent is considered **completed and ready for hackathon evaluation**.
+
+The remaining deployment step is to redeploy the synchronized `main` branch to the configured hosting environment and verify the production `/health`, evaluator `init/feed`, and scheduled autonomous cycle against the real deployment.
+
+---
+
+## Final Project State
+
+The project now satisfies the intended Autonomous AI Creator architecture:
+
+```text
+Evaluator
+   │
+   ├── POST /api/agent/init
+   │        │
+   │        └── Persist agent
+   │                 │
+   │                 └── Start initial cycle
+   │
+   └── GET /api/agent/feed
+            │
+            └── READ ONLY
+
+GitHub Actions
+   │
+   │ hourly
+   ▼
+POST /internal/run-cycle
+   │
+   ▼
+DISCOVER
+   │
+   ▼
+NORMALIZE
+   │
+   ▼
+FILTER
+   │
+   ▼
+MEMORY CHECK
+   │
+   ▼
+EDITORIAL JUDGMENT
+   │
+   ├── reject → rejected_topics
+   │
+   └── select
+          │
+          ▼
+       GENERATE
+          │
+          ▼
+       VALIDATE
+          │
+          ├── reject → cycle outcome
+          │
+          ▼
+        STORE
+          │
+          ▼
+       COMPLETE
+```
+
+The editorial identity is intentionally narrow:
+
+**Postmortem — Production AI Failure Analysis**
+
+Its purpose is not to summarize AI news. It is to identify technically meaningful failures, mechanisms, regressions, incidents, and production lessons that engineers can learn from.
+
+The system therefore demonstrates the core autonomous behavior required by the project:
+
+* It discovers live material.
+* It filters obvious noise.
+* It remembers previously covered topics.
+* It rejects candidates that do not meet its editorial standard.
+* It selects candidates using structured editorial judgment.
+* It generates grounded posts.
+* It validates generated content.
+* It persists results and memory.
+* It records cycle outcomes.
+* It runs independently through an external scheduler.
+* Its evaluator-facing feed remains read-only.
+
+### Final verification status
+
+| Area                               | Status                                 |
+| ---------------------------------- | -------------------------------------- |
+| Repository                         | Complete                               |
+| Persona                            | Complete                               |
+| PostgreSQL persistence             | Complete                               |
+| Agent initialization               | Complete                               |
+| Live discovery                     | Complete                               |
+| Deterministic filtering            | Complete                               |
+| Memory / duplicate detection       | Complete                               |
+| LLM editorial judgment             | Complete                               |
+| Generation                         | Complete                               |
+| Validation                         | Complete                               |
+| Cycle orchestration                | Complete                               |
+| Protected internal scheduler route | Complete                               |
+| GitHub Actions scheduler           | Complete                               |
+| Read-only evaluator feed           | Complete                               |
+| Demo UI                            | Complete                               |
+| Automated tests                    | 48 tests passed in offline environment |
+| Runtime syntax validation          | Passed                                 |
+| Local server startup               | Passed                                 |
+| Health endpoint                    | Passed                                 |
+| Real cycle execution               | Verified                               |
+| Git repository synchronization     | Complete                               |
+| Working tree                       | Clean                                  |
+| Final status                       | **Ready for hackathon evaluation**     |
